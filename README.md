@@ -84,14 +84,14 @@ In the end, they agreed to finalize the document and meet again after completion
 
 ## Dependencies & Versions
 
-| Package | Recommended Version | Description |
-|----------|---------------------|-------------|
-| **Python** | 3.9+ | Required for Whisper and Transformers |
-| **torch** | 2.1.0+ | GPU-accelerated PyTorch backend |
-| **openai-whisper** | 20230314 | Whisper speech recognition |
-| **transformers** | 4.41.1 | Hugging Face summarization model (BART/CNN) |
-| **ffmpeg** | latest | Required for Whisper audio decoding |
-| **tkinter** | built-in | File browser support for user-selected audio |
+| Package | Recommended Version | Description | Tested in |
+|----------|---------------------|-------------|-------------|
+| **Python** | 3.9+ | Required for Whisper and Transformers | 3.9.13 (venv) |
+| **torch** | 2.1.0+ | GPU-accelerated PyTorch backend | 2.7.1+cu118 | 
+| **openai-whisper** | 20230314 | Whisper speech recognition | 20230314 |
+| **transformers** | 4.41.1 | Hugging Face summarization model (BART/CNN) | 4.41.1 |
+| **ffmpeg** | latest | Required for Whisper audio decoding | 0.2.0 |
+| **tkinter** | built-in | File browser support for user-selected audio | built-in |
 
 ---
 
