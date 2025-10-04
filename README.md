@@ -1,4 +1,4 @@
-# Meeting Transcriptor & Summarizer
+# Ai-Powered Meeting Transcriptor & Summarizer
 
 An intelligent Python-based tool that automatically:
 1. Lets you **browse and select** any audio file.
