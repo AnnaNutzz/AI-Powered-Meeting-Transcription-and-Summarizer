@@ -1,0 +1,37 @@
+# ===============================
+# Meeting Transcriptor & Summarizer
+# ===============================
+# Core ML + Speech-to-Text + Summarization dependencies
+# Tested with Python 3.9+ on Windows and Ubuntu
+# GPU acceleration: CUDA 12.1 supported
+# ===============================
+
+# Core PyTorch (GPU-accelerated)
+torch>=2.1.0
+torchaudio>=2.1.0
+
+# Whisper transcription
+openai-whisper==20230314
+
+# Hugging Face models (for summarization)
+transformers==4.41.1
+accelerate>=0.29.0
+
+# Audio processing and conversion
+ffmpeg-python>=0.2.0
+pydub>=0.25.1
+
+# Speaker diarization (if using Pyannote)
+pyannote.audio>=3.1.0
+huggingface-hub>=0.20.0
+
+# GUI file selector
+tk
+
+# Utility libraries
+numpy>=1.24.0
+tqdm>=4.66.0
+
+# Optional: Prevent SSL issues, requests handling
+certifi
+requests
