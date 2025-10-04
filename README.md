@@ -1,181 +1,130 @@
-# AI-Powered-Meeting-Transcription-and-Summarizer
+# Meeting Transcriptor & Summarizer
 
-## Overview
-This project transcribes audio recordings of meetings, performs speaker diarization, and generates a structured output file with:
-
-1. **Part One:** Multi-paragraph, third-person professional briefing  
-2. **Part Two:** Main decisions extracted from discussion  
-3. **Part Three:** Full transcription with speaker labels  
-
-The pipeline uses **Faster Whisper**, **Pyannote Audio**, and Hugging Face **summarization models**.
+An intelligent Python-based tool that automatically:
+1. Lets you **browse and select** any audio file.
+2. **Transcribes** the conversation using OpenAI Whisper.
+3. Generates:
+   - **PART ONE:** A clean narrative summary (third-person briefing style)
+   - **PART TWO:** The main decisions made during the meeting
+   - **PART THREE:** The full transcription
+4. Saves everything neatly into a single `.txt` file.
 
 ---
 
-## Requirements
+## Features
+- Automatic **OS detection** (Windows / macOS / Linux)
+- GPU acceleration with **CUDA** if available
+- Natural **third-person summarization** using Hugging Face `facebook/bart-large-cnn`
+- User-friendly **file browser**
+- Exports timestamped `.txt` output
 
-### 1. Python
+---
 
-- Python 3.10+ recommended (works with 3.9+)  
-- Check version:
+## Installation
+
+### 1. Clone the Repository
 ```bash
-python --version
+git clone https://github.com/<your-username>/meeting-transcriptor.git
+cd meeting-transcriptor
 ```
-
-### 2. CUDA (Optional for GPU)
-
-If using GPU, install CUDA 12.1 (for newer GPUs)
-
-PyTorch compatible version:
+### 2. Create a Virtual Environment (recommended)
+```bash
+python -m venv .venv
+source .venv/bin/activate       # macOS/Linux
+.venv\Scripts\activate          # Windows
 ```
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+If you’re using CUDA 12.1, make sure to install the matching PyTorch build:
+```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-### 3. Required Python Libraries
-
-Install all dependencies:
-```
-pip install faster-whisper==0.9.2
-pip install pyannote.audio==4.0.0
-pip install pydub==0.25.1
-pip install torch==2.3.1
-pip install transformers==4.36.2
-pip install huggingface_hub==0.17.4
-```
-### 4. FFmpeg
-
-Required by pydub for audio handling
-
-Install via Windows:
-
-[Download](https://ffmpeg.org/download.html)
-
-Add bin folder to PATH
-
-Test:
-```
-ffmpeg -version
-```
-
 ---
 
-## Setup
-
-### 1. Clone repository or download script
-
-### 2. Set your audio directory and file path in the script:
+## How to Run
+```bash
+python main.py
 ```
-AUDIO_DIR = "D:/Stuff/ANNIE/"
-AUDIO_FILE = os.path.join(AUDIO_DIR, "test.wav")
-OUTPUT_FILE = os.path.join(AUDIO_DIR, "meeting_output.txt")
+A file browser will open — select your .wav, .mp3, .m4a, or .flac file.
+
+The script will:
+
+- Transcribe the audio
+
+- Generate the summary and decisions
+
+- Save a file like this:
+
 ```
-
-### 3. Hugging Face Login
-
-Obtain token from: [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-
-Add token in script:
-```
-HF_TOKEN = "hf_YOUR_TOKEN_HERE"
+meeting_output_20251004_192512.txt
 ```
 
----
-
-## Running the Pipeline
-```
-python meeting_pipeline.py
-```
-
-Steps executed automatically:
-
-1. Transcription in 1-minute chunks using Faster Whisper
-
-2. Speaker diarization using Pyannote Audio
-
-3. Merge transcription with speaker labels
-
-4. Generate professional third-person briefing (Part One)
-
-5. Extract main decisions (Part Two)
-
-6. Save full transcription (Part Three) in .txt
-
----
-
-## Output
-
-A single `.txt` file with the following structure:
+## Output File Format
 ```
 ===== PART ONE: SUMMARY =====
-<Third-person multi-paragraph briefing>
+The discussion revolved around completing the pending work and ensuring all missing data was gathered.
+Participants focused on maintaining accuracy and clarity while reviewing the final figures.
+They emphasized the importance of delivering concise and well-structured reports.
+In the end, they agreed to finalize the document and meet again after completion for review.
 
 ===== PART TWO: MAIN DECISIONS =====
-<List of decisions/actions>
+1. The presentation will begin with a brief summary followed by key highlights only.
+2. Unnecessary explanations will be avoided to maintain brevity.
+3. The final report will be double-checked for data accuracy before submission.
+4. The team plans to review together once it’s finalized.
 
 ===== PART THREE: FULL TRANSCRIPTION =====
-[0.00-5.23] Speaker 1: Hello everyone...
-[5.24-10.12] Speaker 2: Today we discuss...
+<raw transcribed text>
 ```
+
+---
+
+## Dependencies & Versions
+
+| Package | Recommended Version | Description |
+|----------|---------------------|-------------|
+| **Python** | 3.9+ | Required for Whisper and Transformers |
+| **torch** | 2.1.0+ | GPU-accelerated PyTorch backend |
+| **openai-whisper** | 20230314 | Whisper speech recognition |
+| **transformers** | 4.41.1 | Hugging Face summarization model (BART/CNN) |
+| **ffmpeg** | latest | Required for Whisper audio decoding |
+| **tkinter** | built-in | File browser support for user-selected audio |
 
 ---
 
 ## Common Issues & Fixes
-### 1. ffmpeg not found
-
-- Pydub requires ffmpeg.
-
-- Fix: Download ffmpeg and add to PATH. Test with:
+### 1. Whisper Not Found
+Install directly from GitHub:
 ```
-ffmpeg -version
+pip install git+https://github.com/openai/whisper.git
 ```
 
-### 2. CUDA not available or model runs on CPU
+### 2. FFmpeg Missing
+- Windows: Download FFmpeg and add it to PATH.
 
-- Make sure GPU drivers and CUDA version match PyTorch version.
+- Linux/macOS:
 
-- Fix: Install compatible PyTorch version with CUDA:
 ```
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+sudo apt install ffmpeg
 ```
+or
 
-### 3. Pyannote missing dependencies or build errors
-
-- Ensure torch is installed first.
-
-- Use Python 3.10 or 3.11 to avoid compatibility issues.
-
-### 4. Hugging Face authentication errors
-
-- Ensure your token is correct.
-
-- Test login separately:
 ```
-from huggingface_hub import login
-login("hf_YOUR_TOKEN_HERE")
+brew install ffmpeg
 ```
-
-### 5. Memory issues on long audio
-
-- Script uses chunking to avoid out-of-memory errors.
-
-- Reduce CHUNK_LENGTH_MS if memory is limited:
+### 3. CUDA Not Detected
+Check PyTorch + CUDA match:
 ```
-CHUNK_LENGTH_MS = 30 * 1000  # 30 seconds
+python -m torch.utils.collect_env
 ```
+If not found, reinstall with the correct CUDA toolkit version.
 
-### 6. Long transcription fails on summarizer
+### 4. Out-of-Memory (Low RAM/GPU)
+Switch to a lighter Whisper model:
 
-Text is split into chunks automatically in the pipeline.
-
-Ensure `max_chunk` in `generate_briefing_paragraphs()` is <=1000 characters per chunk.
-
----
-
-# Notes
-
-- Works on Windows 10+ and Linux.
-
-- For best results, use GPU.
-
-- Audio formats supported by pydub: WAV, MP3, FLAC, etc.
-
-- Output text can be imported into Word or Google Docs for formatting.
+```
+model = whisper.load_model("small")  # or "tiny"
+```
