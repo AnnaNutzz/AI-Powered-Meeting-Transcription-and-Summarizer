@@ -1,3 +1,10 @@
+"""
+Tested on Visual Studio Code
+Nvidia GeForce RTX 4060 - 16Gb RAM
+Intel i9 - 12th gen
+64GB RAM
+"""
+
 import os
 import re
 import torch
@@ -6,6 +13,7 @@ from pyannote.audio import Pipeline
 from huggingface_hub import login
 from pydub import AudioSegment
 from transformers import pipeline
+from tkinter import Tk, filedialog
 
 # ------------------------
 # HUGGING FACE LOGIN
@@ -16,8 +24,28 @@ login(HF_TOKEN)
 # ------------------------
 # CONFIGURATION
 # ------------------------
-AUDIO_DIR = "D:/Stuff/ANNIE/"
-AUDIO_FILE = os.path.join(AUDIO_DIR, "test6_sindoor-briefing-5.wav")
+
+"""
+
+Changes to make:
+
+AUDIO_DIR = "the path of the directory/folder in which the transcript is to be added in
+CHUNK_LENGTH_MS = reduce '60' if less memory
+
+"""
+AUDIO_DIR = "D:/"
+
+Tk().withdraw()   
+print("Please select an audio file (.wav, .mp3, etc.)")
+AUDIO_FILE = filedialog.askopenfilename(
+    title="Select Audio File",
+    filetypes=[("Audio Files", "*.wav *.mp3 *.m4a *.flac *.ogg *.aac")]
+)
+
+if not AUDIO_FILE:
+    print("No file selected. Exiting.")
+    exit()
+
 OUTPUT_FILE = os.path.join(AUDIO_DIR, "meeting_output.txt")
 CHUNK_LENGTH_MS = 60 * 1000  # 1-minute chunks
 
