@@ -1,158 +1,166 @@
 """
---------------------------------------------------
-Tested on Visual Studio Code
-Nvidia GeForce RTX 4060 - 16Gb RAM
-Intel i9 - 12th gen
-64GB RAM
----------------------------------------------------
-"""
-"""
-===============================================
-Meeting Transcription + Summary + Decisions
-===============================================
+AI-Powered Meeting Summarizer
+This script processes a meeting audio file to produce a structured summary with discussion points and action items.
+Requirements:
+- Python 3.9.13
+- PyTorch with CUDA support (for GPU acceleration)
+- Whisper (for transcription)
+- Pyannote (for speaker diarization)
+- Transformers (for summarization)
+- NLTK (for text processing)
+- SoundFile (for audio handling)
+- Scikit-learn (for additional utilities)
 
-This script:
-1. Lets the user browse and select an audio file.
-2. Transcribes the meeting audio.
-3. Generates:
-   - PART ONE: Narrative Summary (3rd person)
-   - PART TWO: Main Decisions made
-   - PART THREE: Full Transcription
-4. Saves everything into a text file.
-
-Works on Windows or Linux.
-
-===============================================
+Tested on:
+- Dell G15 with GTX 1650 (4GB VRAM)         ✔ (small)
+- REMOTE PC with RTX A6000 (48GB VRAM)      ⭕
+- EAGLE PC with RTX 4060 (16GB VRAM)        ✔ (medium/large-v3)
 """
+
+
+"""
+# 1. Create a virtual environment (recommended)
+python -m venv office_ai
+# Activate it (Windows PowerShell)
+.\office_ai\Scripts\Activate.ps1
+# or Windows CMD
+.\office_ai\Scripts\activate.bat
+
+# 2. Install required packages (with CUDA support for RTX A6000)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+pip install openai-whisper pyannote.audio transformers scikit-learn nltk soundfile
+
+# 3. Download NLTK tokenizer models
+python -m nltk.downloader punkt
+
+Offline caution: After the first download of models from Hugging Face, you can set:
 
 import os
-import platform
-import tkinter as tk
-from tkinter import filedialog
-import torch
+os.environ["HF_HUB_OFFLINE"] = "1"
+
+This ensures no network calls during inference.
+"""
+
+# imports
+
 import whisper
+import nltk
+from nltk.tokenize import sent_tokenize
+from pyannote.audio import Pipeline
 from transformers import pipeline
-from datetime import datetime
 
 
-# ==========================
-# 1. Device and OS detection
-# ==========================
-system_name = platform.system()
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Detected System: {system_name}")
-print(f"Using device: {device}")
+nltk.download("punkt")
 
+"""
+Stage 1: Import and load Whisper --------------------------------------------
+"""
 
-# ==========================
-# 2. File selection GUI
-# ==========================
-def browse_audio_file():
-    """Open file dialog for user to select an audio file."""
-    root = tk.Tk()
-    root.withdraw()
-    file_path = filedialog.askopenfilename(
-        title="Select Audio File",
-        filetypes=[
-            ("Audio Files", "*.wav *.mp3 *.m4a *.flac"),
-            ("All Files", "*.*")
-        ]
-    )
-    return file_path
+# Load the local Whisper model
+""" 
+Large-v3 requires VRAM; fine in FP16
+model_path = "/models/whisper-small" Dell G15 // 
+    model_path = "/models/whisper-large-v3" A6000
 
+Trade-offs:
+    Tiny: fastest, lowest accuracy.
+    Small: decent speed, good accuracy for clear audio.
+    Medium: better accuracy, slightly slower; might barely fit on 4GB GPU in FP16.
 
-audio_file = browse_audio_file()
-if not audio_file:
-    raise ValueError("No file selected. Please select an audio file to continue.")
+"""
+"""
+model_path = "./models/whisper-large-v3"  # adjust if needed
+whisper_model = whisper.load_model("model_path")
+"""
+whisper_model = whisper.load_model("medium")  # Dell G15
 
-print(f"Selected file: {audio_file}")
+# Transcribe the meeting audio
+audio_file = "test_new.mp3"
+result = whisper_model.transcribe(audio_file, fp16=True)  # FP16 reduces VRAM usage
 
+# Extract the full transcript
+raw_text = result["text"]
 
-# ==========================
-# 3. Transcription Step
-# ==========================
-def transcribe_audio(file_path):
-    """Transcribe the given audio file using Whisper."""
-    print("\nTranscribing audio... this may take a while depending on length and device.")
-    model = whisper.load_model("base", device=device)
-    result = model.transcribe(file_path, fp16=False)
-    return result["text"]
+# Optionally, you can inspect timestamps for each segment
+segments = result.get("segments", [])
+for seg in segments[:3]:  # show first 3 segments
+    print(f"[{seg['start']:.2f}s - {seg['end']:.2f}s] {seg['text']}")
 
+"""
+Stage 2: Speaker diarization ------------------------------------------------
+"""
 
-try:
-    transcription_text = transcribe_audio(audio_file)
-except Exception as e:
-    print(f"Error during transcription: {e}")
-    raise
+# Load local pyannote model
+diarizer = Pipeline.from_pretrained("./models/pyannote-speaker-diarization-3.1")
 
+# Run diarization on the same audio file
+diarization_result = diarizer(audio_file)
 
-# ==========================
-# 4. Summarization & Decisions
-# ==========================
-def generate_summary_and_decisions(transcript_text):
-    """Generate summary and main decisions from transcript using Hugging Face models."""
-    print("\nGenerating summary and decisions...")
+# Print a few speaker segments
+print("Speaker Segments:")
+for turn, _, speaker in diarization_result.itertracks(yield_label=True):
+    print(f"{speaker}: {turn.start:.2f}s → {turn.end:.2f}s")
 
-    summarizer = pipeline(
-        "summarization",
-        model="facebook/bart-large-cnn",
-        device=0 if torch.cuda.is_available() else -1
-    )
+"""
+Stage 3: Split transcript into discussion points -----------------------------------
+"""
 
-    # Split long text if needed for BART model input size
-    max_chunk = 1024
-    paragraphs = [transcript_text[i:i + max_chunk] for i in range(0, len(transcript_text), max_chunk)]
+# Split full transcript into sentences
+sentences = sent_tokenize(raw_text)
 
-    summarized_chunks = []
-    for para in paragraphs:
-        summary = summarizer(para, max_length=130, min_length=40, do_sample=False)[0]["summary_text"]
-        summarized_chunks.append(summary)
+# Naive approach: group sentences into chunks of 5-8 sentences each
+chunk_size = 3 # can be adjusted (default better 6)
+discussion_points = [sentences[i:i+chunk_size] for i in range(0, len(sentences), chunk_size)]
 
-    combined_summary = " ".join(summarized_chunks)
+# Prepare structured discussions
+structured_points = []
+for i, chunk in enumerate(discussion_points):
+    structured_points.append({
+        "point_number": i+1,
+        "discussions": chunk
+    })
 
-    # Convert to more natural, third-person narrative
-    narrative_summary = (
-        "The discussion revolved around completing the pending work and ensuring all missing data was gathered. "
-        "Participants focused on maintaining accuracy and clarity while reviewing the final figures. "
-        "They emphasized the importance of delivering concise and well-structured reports. "
-        "In the end, they agreed to finalize the document and meet again after the completion for review. "
-        "Overall, the tone of the conversation reflected collaboration, focus, and efficiency."
-    )
+# Inspect first point
+print(f"Point 1 discussions: {structured_points[0]['discussions']}")
 
-    main_decisions = (
-        "1. The presentation will begin with a brief summary followed by key highlights only.\n"
-        "2. Unnecessary explanations will be avoided to maintain brevity.\n"
-        "3. The final report will be double-checked for data accuracy before submission.\n"
-        "4. Once completed, the team plans to review together over a follow-up session."
-    )
+"""
+Stage 4: Summarization and Decision Extraction -------------------------------
+"""
 
-    return narrative_summary, main_decisions
+# Load summarizer locally
+"""
+summarizer = pipeline("summarization", model="./models/bart-large-cnn", device=0)  # device=0 for A6000 GPU
+summarizer = pipeline("summarization", model="facebook/bart-base", device=0)  # Dell G15
+"""
 
+summarizer = pipeline("summarization", model="./models/bart-large-cnn", device=0)  # device=0 for A6000 GPU
 
-summary_text, decisions_text = generate_summary_and_decisions(transcription_text)
+final_output = []
 
+for point in structured_points:
+    text_chunk = " ".join(point["discussions"])
+    summary = summarizer(text_chunk, max_length=150, min_length=50, do_sample=False)[0]['summary_text']
+    
+    final_output.append({
+        "point_number": point["point_number"],
+        "discussions": point["discussions"],
+        "action_taken": summary
+    })
 
-# ==========================
-# 5. Save Output to File
-# ==========================
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-output_filename = f"meeting_output_{timestamp}.txt"
+# Inspect first summary
+print(final_output[0])
 
-with open(output_filename, "w", encoding="utf-8") as f:
-    f.write("===== PART ONE: SUMMARY =====\n")
-    f.write(summary_text + "\n\n")
-    f.write("===== PART TWO: MAIN DECISIONS =====\n")
-    f.write(decisions_text + "\n\n")
-    f.write("===== PART THREE: FULL TRANSCRIPTION =====\n")
-    f.write(transcription_text.strip())
+"""
+Stage 5: Output structured summary to text file --------------------------------
+"""
 
-print(f"\nAll sections saved successfully in: {output_filename}")
+output_file = "structured_summary.txt"
 
+with open(output_file, "w", encoding="utf-8") as f:
+    for point in final_output:
+        f.write(f"{point['point_number']}. Point {point['point_number']}:\n")
+        for idx, discussion in enumerate(point["discussions"]):
+            f.write(f"   {chr(97 + idx)}. {discussion}\n")  # 97 = 'a'
+        f.write(f"Action taken: {point['action_taken']}\n\n")
 
-# ==========================
-# 6. Post-run user info
-# ==========================
-print("\n--- PROCESS COMPLETE ---")
-print(f"Summary, decisions, and transcription have been saved in '{output_filename}'.")
-print("You can now review the file or modify it as needed.")
-
+print(f"Structured summary written to {output_file}")
